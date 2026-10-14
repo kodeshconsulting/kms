@@ -1,0 +1,28 @@
+{
+  "name": "@buildmegachurch/kms",
+  "version": "0.1.0",
+  "description": "Chiffre/déchiffre des champs sensibles avec Google Cloud KMS avant stockage dans Supabase",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc",
+    "test": "node --env-file-if-exists=.env --test src/index.test.ts"
+  },
+  "dependencies": {
+    "@google-cloud/kms": "^6.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5.9"
+  }
+}
