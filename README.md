@@ -154,7 +154,7 @@ Les trois tests appellent vraiment KMS : aller-retour, 1,3 Mo, chiffré altéré
 
 ### Installer
 
-Le dépôt est privé. En local, ta session Git suffit :
+Le dépôt est public : aucun jeton, ni en local ni sur Vercel.
 
 ```bash
 npm install github:kodeshconsulting/kms#v0.2.0
@@ -197,26 +197,10 @@ affiche un échec, sans jamais perdre la saisie de la personne.
 
 ## 5. Déployer sur Vercel
 
-En production il n'y a ni `gcloud` ni ta session. Trois choses à poser dans le projet Vercel.
+En production il n'y a ni `gcloud` ni ta session. Le dépôt `kms` étant public, Vercel l'installe
+tout seul avec `npm ci`. Il reste deux variables à poser dans le projet Vercel.
 
-### a. Un jeton pour installer le dépôt privé
-
-Vercel exécute `npm install` sur ses serveurs et n'a pas accès à tes dépôts privés.
-
-1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** →
-   Generate. Dépôt : `kodeshconsulting/kms` seulement. Permission : **Contents : Read-only**.
-2. Vercel → projet → Settings → Environment Variables : `GITHUB_TOKEN` = le jeton.
-3. Vercel → Settings → General → Build & Development Settings → **Install Command** :
-
-```bash
-git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "ssh://git@github.com/" && npm ci
-```
-
-Pourquoi `ssh://` : npm enregistre les dépendances GitHub sous la forme `git+ssh://git@github.com/…`
-dans `package-lock.json`, et Vercel n'a pas de clé SSH. Cette ligne dit à Git de remplacer cette
-adresse par la version HTTPS avec le jeton, le temps de l'installation.
-
-### b. La clé du service account
+### a. La clé du service account
 
 Génère-la sur ton poste (fichier **secret**, déjà dans `.gitignore`) :
 
@@ -227,7 +211,7 @@ gcloud iam service-accounts keys create sa-key.json --iam-account=kms-encrypter@
 Dans Vercel, variable `GCP_SA_KEY` = le contenu complet du fichier, sur une ligne. Puis supprime
 `sa-key.json` de ton disque.
 
-### c. Le nom de la clé
+### b. Le nom de la clé
 
 Variable `KMS_KEY_NAME` = la même valeur qu'en local.
 
@@ -275,6 +259,8 @@ toujours. La destruction est différée de 30 jours et annulable pendant ce dél
 - **Pas de « zéro connaissance ».** Qui contrôle à la fois la base et les credentials Google (ou
   l'IAM du projet) peut déchiffrer. La protection vise l'accès isolé à la base.
 - **Pas de recherche** dans les champs chiffrés.
+- **Le code est public**, et c'est voulu : il ne contient aucun secret. La sécurité vient d'IAM
+  (qui a le droit d'utiliser la clé) et des variables d'environnement, jamais du code.
 - **Pas de liaison** entre un chiffré et sa ligne : un administrateur de la base qui copie le
   chiffré de la ligne A dans la ligne B ne le lit pas pour autant, mais B le déchiffrerait. À ajouter
   si ce scénario devient réaliste (données additionnelles authentifiées dans AES-GCM).
