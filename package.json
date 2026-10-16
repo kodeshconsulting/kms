@@ -1,7 +1,7 @@
 {
   "name": "@buildmegachurch/kms",
-  "version": "0.1.0",
-  "description": "Chiffre/déchiffre des champs sensibles avec Google Cloud KMS avant stockage dans Supabase",
+  "version": "0.2.0",
+  "description": "Encrypt and decrypt sensitive fields with Google Cloud KMS (envelope encryption) before storing them in Supabase",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
