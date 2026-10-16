@@ -157,7 +157,7 @@ Les trois tests appellent vraiment KMS : aller-retour, 1,3 Mo, chiffré altéré
 Le dépôt est privé. En local, ta session Git suffit :
 
 ```bash
-npm install git+https://github.com/kodeshconsulting/kms.git#v0.2.0
+npm install github:kodeshconsulting/kms#v0.2.0
 ```
 
 Le `#v0.2.0` fige la version : une mise à jour de la librairie ne change rien dans le projet tant
@@ -209,8 +209,12 @@ Vercel exécute `npm install` sur ses serveurs et n'a pas accès à tes dépôts
 3. Vercel → Settings → General → Build & Development Settings → **Install Command** :
 
 ```bash
-git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/" && npm ci
+git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "ssh://git@github.com/" && npm ci
 ```
+
+Pourquoi `ssh://` : npm enregistre les dépendances GitHub sous la forme `git+ssh://git@github.com/…`
+dans `package-lock.json`, et Vercel n'a pas de clé SSH. Cette ligne dit à Git de remplacer cette
+adresse par la version HTTPS avec le jeton, le temps de l'installation.
 
 ### b. La clé du service account
 
