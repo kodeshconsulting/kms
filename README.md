@@ -195,25 +195,87 @@ affiche un échec, sans jamais perdre la saisie de la personne.
 
 ---
 
-## 5. Déployer sur Vercel
+## 5. Déployer sur Vercel (Preview et Production)
 
-En production il n'y a ni `gcloud` ni ta session. Le dépôt `kms` étant public, Vercel l'installe
-tout seul avec `npm ci`. Il reste deux variables à poser dans le projet Vercel.
+En production il n'y a ni `gcloud` ni ta session : le code s'identifie avec la clé du service
+account. Le dépôt `kms` étant public, Vercel l'installe tout seul avec `npm ci`. Il reste **deux
+variables** à poser dans le projet Vercel, pour chaque environnement.
 
-### a. La clé du service account
+| Variable | Secret ? | Ce que c'est |
+|---|---|---|
+| `KMS_KEY_NAME` | non | l'adresse complète de la clé KMS |
+| `GCP_SA_KEY` | **oui** | le fichier JSON qui prouve l'identité du service account `kms-encrypter` |
 
-Génère-la sur ton poste (fichier **secret**, déjà dans `.gitignore`) :
+### a. Une clé par environnement (recommandé pour la production)
+
+Rien n'empêche d'utiliser la même clé partout. Mais une clé dédiée à la production, c'est la
+garantie que les données de test et les vraies données ne sont jamais chiffrées par la même clé, et
+qu'on peut révoquer l'une sans toucher à l'autre. Pour la créer, une fois :
 
 ```bash
-gcloud iam service-accounts keys create sa-key.json --iam-account=kms-encrypter@buildmegachurch.iam.gserviceaccount.com
+./scripts/setup-gcp.sh supabase-fields-prod
 ```
 
-Dans Vercel, variable `GCP_SA_KEY` = le contenu complet du fichier, sur une ligne. Puis supprime
-`sa-key.json` de ton disque.
+Le script crée la clé à Montréal, avec rotation, et donne au service account le droit de s'en
+servir. Il affiche son `KMS_KEY_NAME`.
 
-### b. Le nom de la clé
+À savoir : le même service account sert les deux clés, donc la même `GCP_SA_KEY` peut déchiffrer
+les deux. Pour un cloisonnement complet, il faudrait un second service account réservé à la
+production ; c'est à ajouter le jour où l'équipe qui a accès à Vercel Preview n'est pas la même que
+celle qui a accès à la production.
 
-Variable `KMS_KEY_NAME` = la même valeur qu'en local.
+### b. Retrouver `KMS_KEY_NAME`
+
+Il s'affiche à la fin du script. Pour le retrouver plus tard, liste les clés du keyring :
+
+```bash
+gcloud kms keys list --keyring=buildmegachurch --location=northamerica-northeast1 --project=buildmegachurch --format="value(name)"
+```
+
+Chaque ligne est un `KMS_KEY_NAME` complet. Dans la console : Sécurité → Key Management → keyring
+`buildmegachurch` → la clé → bouton « Copier le nom de la ressource ».
+
+### c. Créer `GCP_SA_KEY`
+
+Ce fichier ne se retrouve pas : Google ne le donne qu'une fois, à sa création. Si tu l'as perdu, tu
+en crées un nouveau. Dans ton terminal, les trois commandes dans l'ordre.
+
+Créer le fichier dans ton dossier personnel :
+
+```bash
+gcloud iam service-accounts keys create ~/sa-key.json --iam-account=kms-encrypter@buildmegachurch.iam.gserviceaccount.com
+```
+
+Copier son contenu dans le presse-papiers :
+
+```bash
+pbcopy < ~/sa-key.json
+```
+
+Colle-le dans Vercel (étape d), **puis seulement** supprime le fichier :
+
+```bash
+rm ~/sa-key.json
+```
+
+Un service account accepte au plus 10 clés. Supprime celles qui ne servent plus (section 6).
+
+### d. Les poser dans Vercel
+
+Projet Vercel → Settings → **Environment Variables** → Add.
+
+1. Key `KMS_KEY_NAME`, Value : la valeur de l'étape b. Coche l'environnement voulu : **Preview**
+   pour la clé de test, **Production** pour la clé de production.
+2. Key `GCP_SA_KEY`, Value : colle le JSON entier (plusieurs lignes, c'est accepté). Coche
+   **Sensitive**, puis l'environnement. Save.
+3. Une variable ajoutée ne s'applique qu'aux déploiements **suivants**. Onglet Deployments → le
+   dernier → menu ⋯ → **Redeploy**.
+
+### e. Vérifier
+
+Dans l'application déployée, enregistre un texte chiffré puis recharge la page. S'il revient, c'est
+bon. Sinon, les journaux du déploiement (Vercel → Deployments → le déploiement → Logs) montrent
+l'erreur exacte ; la section 7 dit quoi faire.
 
 ---
 
@@ -221,7 +283,8 @@ Variable `KMS_KEY_NAME` = la même valeur qu'en local.
 
 **Rotation.** Automatique tous les 90 jours. Rien à faire, rien à migrer.
 
-**Si la clé du service account fuit.** Révoque-la, régénère-la, remplace `GCP_SA_KEY` :
+**Si la clé du service account fuit, ou pour faire le ménage.** Liste les clés, supprime celle qui a
+fui ou ne sert plus, puis crée-en une nouvelle et remplace `GCP_SA_KEY` dans Vercel (section 5c) :
 
 ```bash
 gcloud iam service-accounts keys list --iam-account=kms-encrypter@buildmegachurch.iam.gserviceaccount.com
